@@ -57,7 +57,7 @@ async fn handle_request(
     for (k, v) in parts.headers.iter() {
         println!("  {}: {}", k, v.to_str().unwrap_or("<non-utf8>"));
     }
-    println!("[Body]   {}", body_str);
+    // println!("[Body]   {}", body_str);
     println!("==================================================\n");
 
     // ----- 路径处理：将任何以 /v1/messages 开头的路径映射为 /v1/messages -----
@@ -158,20 +158,8 @@ async fn handle_request(
         }
     };
 
-    // ----- 读取响应 -----
     let status = resp.status();
     let resp_headers = resp.headers().clone();
-    let resp_bytes = match resp.bytes().await {
-        Ok(b) => b,
-        Err(e) => {
-            eprintln!("读取响应体失败: {}", e);
-            return Ok(Response::builder()
-                .status(502)
-                .body(Body::from(format!("Failed to read response body: {}", e)))
-                .unwrap());
-        }
-    };
-    let resp_str = String::from_utf8_lossy(&resp_bytes);
 
     println!("\n==================== RESPONSE ====================");
     println!("[Status] {}", status);
@@ -179,20 +167,26 @@ async fn handle_request(
     for (k, v) in resp_headers.iter() {
         println!("  {}: {}", k, v.to_str().unwrap_or("<non-utf8>"));
     }
-    println!("[Body]   {}", resp_str);
+    println!("[Streaming] Body will be streamed");
     println!("==================================================\n");
 
-    // ----- 返回 -----
+    // ----- 流式转发 SSE -----
+    let stream = resp.bytes_stream();
+
+    // 构建响应，保留所有头（除了 connection/transfer-encoding）
     let mut response_builder = Response::builder().status(status.as_u16());
     for (k, v) in resp_headers.iter() {
-        if k.as_str().to_lowercase() != "transfer-encoding"
-            && k.as_str().to_lowercase() != "connection"
-            && k.as_str().to_lowercase() != "content-encoding"
-        {
+        let key = k.as_str().to_lowercase();
+        if key != "connection" && key != "transfer-encoding" {
             response_builder = response_builder.header(k.as_str(), v.as_bytes());
         }
     }
-    Ok(response_builder.body(Body::from(resp_bytes)).unwrap())
+    if !resp_headers.contains_key("content-type") {
+        response_builder = response_builder.header("content-type", "text/event-stream; charset=utf-8");
+    }
+
+    let body = Body::wrap_stream(stream);
+    return Ok(response_builder.body(body).unwrap());
 }
 
 #[tokio::main]
@@ -203,7 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         reqwest::Client::builder()
             .danger_accept_invalid_certs(true)
             .no_proxy()
-            .timeout(std::time::Duration::from_secs(30))
+            .timeout(std::time::Duration::from_secs(600))
             .build()
             .expect("Failed to build reqwest client"),
     );
