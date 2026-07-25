@@ -1,0 +1,12 @@
+[package]
+name = "modelproxy"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hyper = { version = "0.14", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
+serde_json = "1.0"
+bytes = "1.0"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+clap = { version = "4.0", features = ["derive"] }
