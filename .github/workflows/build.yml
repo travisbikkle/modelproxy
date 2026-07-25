@@ -13,9 +13,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: modelproxy-windows-x86_64.zip
+#          - os: windows-latest
+#            target: x86_64-pc-windows-msvc
+#            artifact_name: modelproxy-windows-x86_64.zip
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: modelproxy-linux-x86_64.tar.gz
