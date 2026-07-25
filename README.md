@@ -6,6 +6,10 @@
 modelproxy.exe --listen 0.0.0.0:8080 --server https://x.x.x.x:38455/apiaccess/modelrouter
 # linux
 modelproxy --listen 0.0.0.0:8080 --server https://x.x.x.x:38455/apiaccess/modelrouter
+# specify model (default: MiniMax-M2.7)
+modelproxy.exe --listen 0.0.0.0:8080 --server https://x.x.x.x:38455/apiaccess/modelrouter --model MiniMax-M2.7
+# short form
+modelproxy.exe -l 0.0.0.0:8080 -s https://x.x.x.x:38455/apiaccess/modelrouter -m Another-Model
 ```
 ### use with claude code cli and vscode plugin
 1. windows: %USERPROFILE%/.claude/settings.json

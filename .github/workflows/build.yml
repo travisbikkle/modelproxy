@@ -40,10 +40,10 @@ jobs:
           mkdir -p dist
           if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             cd target/${{ matrix.target }}/release
-            powershell -Command "Compress-Archive -Path modelproxy.exe -DestinationPath ../../../../dist/${{ matrix.artifact_name }}"
+            powershell -Command "Compress-Archive -Path modelproxy.exe -DestinationPath $(pwd)/../../../dist/${{ matrix.artifact_name }}"
           else
             cd target/${{ matrix.target }}/release
-            tar czf ../../../../dist/${{ matrix.artifact_name }} modelproxy
+            tar czf $(pwd)/../../../dist/${{ matrix.artifact_name }} modelproxy
           fi
 
       - name: Upload artifact

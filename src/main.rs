@@ -18,12 +18,17 @@ struct Args {
     /// 后端基础 URL，例如 https://x.x.x.x:38455/apiaccess/modelrouter
     #[arg(short, long)]
     server: String,
+
+    /// 强制使用的模型名称
+    #[arg(short, long, default_value = "MiniMax-M2.7")]
+    model: String,
 }
 
 async fn handle_request(
     req: Request<Body>,
     client: Arc<reqwest::Client>,
     target_base: Arc<str>,
+    model: Arc<str>,
 ) -> Result<Response<Body>, Infallible> {
     // HEAD 健康检查
     if req.method() == hyper::Method::HEAD {
@@ -118,7 +123,7 @@ async fn handle_request(
     // ----- 强制模型名 -----
     let final_body = if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&body_str) {
         if let Some(obj) = json.as_object_mut() {
-            obj.insert("model".to_string(), serde_json::Value::String("MiniMax-M2.7".to_string()));
+            obj.insert("model".to_string(), serde_json::Value::String(model.to_string()));
         }
         serde_json::to_string(&json).unwrap_or_else(|_| body_str.to_string())
     } else {
@@ -162,7 +167,7 @@ async fn handle_request(
             eprintln!("读取响应体失败: {}", e);
             return Ok(Response::builder()
                 .status(502)
-                .body(Body::from("Failed to read response body"))
+                .body(Body::from(format!("Failed to read response body: {}", e)))
                 .unwrap());
         }
     };
@@ -205,15 +210,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("后端服务器: {}", args.server);
     let target_base: Arc<str> = args.server.into();
+    let model: Arc<str> = args.model.into();
 
     let make_svc = make_service_fn(move |_conn| {
         let client = client.clone();
         let target_base = target_base.clone();
+        let model = model.clone();
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
                 let client = client.clone();
                 let target_base = target_base.clone();
-                async move { handle_request(req, client, target_base).await }
+                let model = model.clone();
+                async move { handle_request(req, client, target_base, model).await }
             }))
         }
     });
