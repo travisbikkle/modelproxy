@@ -1,10 +1,6 @@
 name: Build
 
 on:
-#  push:
-#    branches: [master, main]
-#  pull_request:
-#    branches: [master, main]
   release:
     types: [created]
 
@@ -16,11 +12,8 @@ jobs:
     strategy:
       matrix:
         include:
-#          - os: windows-latest
-#            target: x86_64-pc-windows-msvc
-#            artifact_name: modelproxy-windows-x86_64.zip
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
+            target: x86_64-unknown-linux-musl
             artifact_name: modelproxy-linux-x86_64.tar.gz
 
     runs-on: ${{ matrix.os }}
@@ -34,6 +27,9 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install musl tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
@@ -41,13 +37,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-            cd target/${{ matrix.target }}/release
-            powershell -Command "Compress-Archive -Path modelproxy.exe -DestinationPath $(pwd)/../../../dist/${{ matrix.artifact_name }}"
-          else
-            cd target/${{ matrix.target }}/release
-            tar czf $(pwd)/../../../dist/${{ matrix.artifact_name }} modelproxy
-          fi
+          cd target/${{ matrix.target }}/release
+          tar czf $(pwd)/../../../dist/${{ matrix.artifact_name }} modelproxy
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
