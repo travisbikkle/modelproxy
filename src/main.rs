@@ -6,6 +6,7 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use hyper::server::conn::AddrStream;
 
 /// Anthropic 协议代理，将请求转发到实际后端
 #[derive(Parser, Debug)]
@@ -29,6 +30,7 @@ async fn handle_request(
     client: Arc<reqwest::Client>,
     target_base: Arc<str>,
     model: Arc<str>,
+    remote_addr: SocketAddr,
 ) -> Result<Response<Body>, Infallible> {
     // HEAD 健康检查
     if req.method() == hyper::Method::HEAD {
@@ -50,12 +52,22 @@ async fn handle_request(
     };
     let body_str = String::from_utf8_lossy(&body_bytes);
 
+    // 获取客户端 IP
+    let client_ip = remote_addr.to_string();
+
     println!("\n==================== INCOMING ====================");
+    println!("[Client IP] {}", client_ip);
     println!("[Method] {}", parts.method);
     println!("[URI]    {}", parts.uri);
     println!("[Headers]");
     for (k, v) in parts.headers.iter() {
-        println!("  {}: {}", k, v.to_str().unwrap_or("<non-utf8>"));
+        let key = k.as_str().to_lowercase();
+        let value = if key == "authorization" || key == "x-api-key" {
+            "***".to_string()
+        } else {
+            v.to_str().unwrap_or("<non-utf8>").to_string()
+        };
+        println!("  {}: {}", k, value);
     }
     // println!("[Body]   {}", body_str);
     println!("==================================================\n");
@@ -206,25 +218,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let target_base: Arc<str> = args.server.into();
     let model: Arc<str> = args.model.into();
 
-    let make_svc = make_service_fn(move |_conn| {
+    let make_svc = make_service_fn(move |conn: &AddrStream| {
         let client = client.clone();
         let target_base = target_base.clone();
         let model = model.clone();
+        let remote_addr = conn.remote_addr();
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
                 let client = client.clone();
                 let target_base = target_base.clone();
                 let model = model.clone();
-                async move { handle_request(req, client, target_base, model).await }
+                let remote_addr = remote_addr;
+                async move { handle_request(req, client, target_base, model, remote_addr).await }
             }))
         }
     });
 
     let server = Server::bind(&args.listen).serve(make_svc);
     println!("Author: The most handsome guy in CEM. If you don't agree, press Ctrl+C.");
-    println!("🦀 代理运行在 http://{}", args.listen);
-    println!("请将 Claude Code 的 ANTHROPIC_API_URL 设置为 http://{}/v1/messages（不带路径）", args.listen);
-    println!("按 Ctrl+C 停止");
+    println!("🦀 proxy running at http://{}", args.listen);
+    println!("Set ANTHROPIC_API_URL in ~/.claude/settings.json to http://{}", args.listen);
+    println!("press Ctrl+C to stop");
 
     server.await?;
     Ok(())
