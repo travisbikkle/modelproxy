@@ -1,3 +1,39 @@
+## user guide
+
+### run this proxy
+```bash
+# windows
+modelproxy.exe --listen 0.0.0.0:8080 --server https://x.x.x.x:38455/apiaccess/modelrouter
+# linux
+modelproxy --listen 0.0.0.0:8080 --server https://x.x.x.x:38455/apiaccess/modelrouter
+```
+### use with claude code cli and vscode plugin
+1. windows: %USERPROFILE%/.claude/settings.json
+2. linux/macOS: ~/.claude/settings.json
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://localhost:8080",
+    "ANTHROPIC_AUTH_TOKEN": "xxxxxxxx",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.7"
+  },
+  "theme": "auto"
+}
+
+```
+
+## build
+```bash
+# widows/linux build directly
+cargo build --release
+# cross compilation, on windows need docker
+#cargo install cross
+#cross build --target x86_64-unknown-linux-gnu --release
+```
+
+### memo
 ```bash
 curl -k -X POST "https://xxxxxxx:38455/apiaccess/modelrouter/v1/messages" \
   -H "content-type: application/json" \

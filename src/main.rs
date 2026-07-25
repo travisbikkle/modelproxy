@@ -1,9 +1,7 @@
-use bytes::Bytes;
 use clap::Parser;
 use hyper::body::to_bytes;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
-use hyper::header::CONTENT_LENGTH;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use std::convert::Infallible;
 use std::net::SocketAddr;
